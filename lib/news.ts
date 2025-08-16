@@ -4,7 +4,7 @@ export async function fetchArticles(categories: string[]):
     
     try {
         const promises = categories.map(async (category) => {
-            const response = await fetch(`https://newsapi.org/v2/everything?apiKey=${process.env.NEWS_API_KEY}&qInTitle=${category}&from=${since}&sortBy=publishedAt`);
+            const response = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(category)}&from=${since}&sortBy=publishedAt&apiKey=${process.env.NEWS_API_KEY}`);
             
             if (!response.ok) {
                 throw new Error(`Failed to fetch articles for category: ${category}`);
