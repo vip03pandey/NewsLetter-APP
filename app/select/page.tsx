@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
-import { Timeline } from "@/components/ui/timeline";
-
+import { createClient } from "@/lib/client";
+import { useRouter } from "next/navigation";
 interface Category {
   id: string;
   name: string;
@@ -80,6 +80,33 @@ const categories: Category[] = [
 export default function SelectPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedFrequency, setSelectedFrequency] = useState<string>("weekly");
+  const [email, setEmail] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<any>(null);
+  const [authError, setAuthError] = useState<string>("");
+  const router = useRouter();
+  useEffect(() => {
+    async function getUser() {
+      try {
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error(error);
+          setAuthError("Authentication error");
+        } else {
+          setUser(user);
+          if (user?.email) {
+            setEmail(user.email);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to get user:", err);
+        setAuthError("Failed to authenticate");
+      }
+    }
+    getUser();
+  }, []);
 
   const handleCategoryChange = (categoryId: string) => {
     if (selectedCategories.includes(categoryId)) {
@@ -93,12 +120,53 @@ export default function SelectPage() {
     setSelectedFrequency(frequency);
   };
 
+  async function handleSubmit() {
+    if (selectedCategories.length === 0) {
+      setMessage("Please select at least one category");
+      return;
+    }
+
+    if (!user) {
+      setMessage("Please log in to save preferences");
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/user-preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          categories: selectedCategories,
+          frequency: selectedFrequency,
+          email: user.email
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setMessage("Preferences saved successfully!");
+        router.push("/dashboard");
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      setMessage("Failed to save preferences. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="relative z-10 container mx-auto px-6 py-8">
         <div className="text-center mb-12">
           <div className="inline-flex items-center bg-gray-800/60 backdrop-blur-sm rounded-full px-6 py-3 mb-6 text-sm font-medium border border-gray-700/50">
-            <span className="text-2xl mr-2">✨</span>
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Personalized Newsletter
             </span>
@@ -238,7 +306,9 @@ export default function SelectPage() {
 
         {selectedCategories.length > 0 && (
           <div className="text-center mt-16">
-            <button className="bg-white text-black font-bold py-4 px-12 rounded-full text-lg transition-all duration-300 hover:scale-105 shadow-lg">
+            <button className="bg-white text-black font-bold py-4 px-12 rounded-full text-lg transition-all duration-300 hover:scale-105 shadow-lg"
+            onClick={handleSubmit}
+            disabled={isLoading}>
               Continue with {selectedCategories.length} categories →
             </button>
           </div>
