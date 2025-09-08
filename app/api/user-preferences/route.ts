@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cookies } from 'next/headers'
+import { inngest } from '@/lib/inngest/client';
 
 export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
@@ -40,6 +41,11 @@ export async function POST(request: NextRequest) {
     if (upsertError) {
         return NextResponse.json({ error: upsertError.message }, { status: 500 })
     }
-    
+    const {}=await inngest.send({
+        name:"newsletter.schedule",
+        data:{
+            
+        }
+    })
     return NextResponse.json({ data }, { status: 200 })
 }
